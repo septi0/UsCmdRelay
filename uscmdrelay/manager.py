@@ -18,8 +18,6 @@ class UsCmdRelayManager:
         self._pid_file: str = "/tmp/uscmdrelay.pid"
         self._running: bool = False
 
-        self._host = params.get('host', '0.0.0.0')
-        self._port = params.get('port', 7777)
         self._shell_exec = params.get('shell_exec', False)
 
         self._logger: logging.Logger = self._gen_logger(params.get('log_file', ''), params.get('log_level', 'INFO'))
@@ -39,7 +37,7 @@ class UsCmdRelayManager:
             'total_errors': 0,
         }
 
-    def run(self):
+    def run(self, options: dict):
         pid = str(os.getpid())
 
         if os.path.isfile(self._pid_file):
@@ -52,16 +50,18 @@ class UsCmdRelayManager:
         self._logger.info("Starting server")
 
         # catch sigterm
-
         def sigterm_handler(signum, frame):
             raise KeyboardInterrupt
 
         signal.signal(signal.SIGTERM, sigterm_handler)
 
+        host = options.get('host', '0.0.0.0')
+        port = options.get('port', 7777)
+
         loop = asyncio.get_event_loop()
 
         try:
-            loop.run_until_complete(self._start_server())
+            loop.run_until_complete(self._start_server(host=host, port=port))
         except (KeyboardInterrupt):
             pass
         except (Exception) as e:
@@ -185,9 +185,9 @@ class UsCmdRelayManager:
 
         return parsed_config
 
-    async def _start_server(self):
-        server = await asyncio.start_server(self._handle_client, self._host, self._port)
-        self._logger.info(f"Server is listening on {self._host}:{self._port}")
+    async def _start_server(self, *, host: str = '0.0.0.0', port: int = 7777):
+        server = await asyncio.start_server(self._handle_client, host, port)
+        self._logger.info(f"Server is listening on {host}:{port}")
 
         async with server:
             await server.serve_forever()

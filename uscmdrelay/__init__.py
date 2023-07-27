@@ -21,13 +21,11 @@ def main():
     
     args = parser.parse_args()
 
-    options = {}
-
-    options['host'] = args.host
-    options['port'] = args.port
-    options['log_file'] = args.log_file
-    options['log_level'] = args.log_level
-    options['shell_exec'] = args.shell_exec
+    options = {
+        'log_file': args.log_file,
+        'log_level': args.log_level,
+        'shell_exec': args.shell_exec,
+    }
     
     try:
         uscmdrelay = UsCmdRelayManager(options)
@@ -38,4 +36,9 @@ def main():
     if args.command == 'configtest':
         print("Config OK")
     else:
-        uscmdrelay.run()
+        options = {
+            'host': args.host,
+            'port': args.port,
+        }
+
+        uscmdrelay.run(options)
