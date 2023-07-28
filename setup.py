@@ -1,6 +1,6 @@
 
 from setuptools import setup
-from uscmdrelay.info import APP_NAME, APP_VERSION, APP_DESCRIPTION
+from uscmdrelay.info import APP_NAME, APP_VERSION, APP_DESCRIPTION, APP_AUTHOR, APP_AUTHOR_EMAIL, APP_AUTHOR_URL
 
 with open("README.md", "r") as f:
     long_description = f.read()
@@ -15,9 +15,9 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="GPLv3",
-    author='Septimiu Ujica',
-    author_email='me@septi.ro',
-    author_url='https://www.septi.ro',
+    author=APP_AUTHOR,
+    author_email=APP_AUTHOR_EMAIL,
+    author_url=APP_AUTHOR_URL,
     python_requires='>=3.9',
     install_requires=requirements,
     packages=[
