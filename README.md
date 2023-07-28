@@ -136,6 +136,8 @@ The client must send the data as a JSON encoded string with the following keys:
 For sample configuration files see `auth.sample.conf` and `relays.sample.conf`. Aditionally, you can copy theese files to `/etc/uscmdrelay/`, `/etc/opt/uscmdrelay/` or `~/.config/uscmdrelay/` and adjust the values to your needs.
 
 #### Configuring auth (auth.conf)
+For security reasons, the auth configuration file must be owned by the user that runs the server and must not be accessible by other users. (600 permissions)
+
 Each section in the configuration file is an auth key. The name of the section is the auth key that will be specified with the `auth_key` property by the client.
 
 Section properties:

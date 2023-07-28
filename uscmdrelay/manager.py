@@ -128,6 +128,19 @@ class UsCmdRelayManager:
             os.path.expanduser(f'~/.config/uscmdrelay/{config_type}.conf'),
         ]
 
+        if config_type == 'auth':
+            for config_file in config_files:
+                if os.path.isfile(config_file):
+                    stat = os.stat(config_file)
+
+                    # check if file is owned by user that is running the server
+                    if stat.st_uid != os.getuid():
+                        raise UsCMdRelayConfigError(f'"{config_file}" must be owned by {os.getuid()}')
+
+                    # check if file has proper permissions (only user can read/write)
+                    if stat.st_mode & 0o077 != 0:
+                        raise UsCMdRelayConfigError(f'"{config_file}" must have permissions 600')
+
         config_inst = ConfigParser()
         config_inst.read(config_files)
 
