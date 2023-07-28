@@ -18,7 +18,7 @@ setup(
     author='Septimiu Ujica',
     author_email='me@septi.ro',
     author_url='https://www.septi.ro',
-    python_requires='>=3.10',
+    python_requires='>=3.9',
     install_requires=requirements,
     packages=[
         'uscmdrelay',

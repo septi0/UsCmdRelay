@@ -3,8 +3,8 @@ import json
 __all__ = ['ClientResponse']
 
 class ClientResponse:
-    def __init__(self, message: str | dict, status: str, *, code = 0) -> None:
-        self._message: str | dict = message
+    def __init__(self, message, status: str, *, code = 0) -> None:
+        self._message = message
         self._status: str = status
         self._code: int = code
 
