@@ -9,13 +9,13 @@ from configparser import ConfigParser
 from uscmdrelay.client_request import ClientRequest
 from uscmdrelay.client_response import ClientResponse
 from uscmdrelay.cmd_exec import exec_cmd
-from uscmdrelay.exceptions import UsCMdRelayConfigError, ClientRequestError, ProcessError
+from uscmdrelay.exceptions import UsCMdRelayConfigError, ClientRequestError, ProcessError, GracefulExit
 
 __all__ = ['UsCmdRelayManager']
 
 class UsCmdRelayManager:
     def __init__(self, params: dict) -> None:
-        self._pid_file: str = "/tmp/uscmdrelay.pid"
+        self._pid_filepath: str = self._gen_pid_filepath()
         self._running: bool = False
 
         self._shell_exec = params.get('shell_exec', False)
@@ -37,33 +37,29 @@ class UsCmdRelayManager:
             'total_errors': 0,
         }
 
+        signal.signal(signal.SIGTERM, self._sigterm_handler)
+        signal.signal(signal.SIGINT, self._sigterm_handler)
+        signal.signal(signal.SIGQUIT, self._sigterm_handler)
+
     def run(self, options: dict):
         pid = str(os.getpid())
 
-        if os.path.isfile(self._pid_file):
+        if os.path.isfile(self._pid_filepath):
             self._logger.error("Server is already running")
             sys.exit(1)
 
-        with open(self._pid_file, 'w') as f:
+        with open(self._pid_filepath, 'w') as f:
             f.write(pid)
 
         self._logger.info("Starting server")
 
-        # catch sigterm
-        def sigterm_handler(signum, frame):
-            raise KeyboardInterrupt
-
-        signal.signal(signal.SIGTERM, sigterm_handler)
-
         host = options.get('host', '0.0.0.0')
         port = options.get('port', 7777)
 
-        loop = asyncio.get_event_loop()
-
         try:
-            loop.run_until_complete(self._start_server(host=host, port=port))
-        except (KeyboardInterrupt):
-            pass
+            asyncio.run(self._start_server(host=host, port=port))
+        except (GracefulExit) as e:
+            self._logger.info("Received termination signal")
         except (Exception) as e:
             self._logger.exception(e, exc_info=True)
         finally:
@@ -74,23 +70,16 @@ class UsCmdRelayManager:
             self._logger.info(f"Total requests: {self._stats['total_requests']}")
             self._logger.info(f"Total errors: {self._stats['total_errors']}")
 
-            os.unlink(self._pid_file)
+            os.unlink(self._pid_filepath)
 
-            tasks = asyncio.all_tasks(loop)
+    def _sigterm_handler(self, signum, frame) -> None:
+        raise GracefulExit
 
-            for task in tasks:
-                task.cancel()
-
-            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-
-            for task in tasks:
-                if task.cancelled():
-                    continue
-
-                if task.exception() is not None:
-                    raise task.exception()
-                
-            loop.close()
+    def _gen_pid_filepath(self) -> str:
+        if os.getuid() == 0:
+            return '/var/run/uscmdrelay.pid'
+        else:
+            return '/tmp/uscmdrelay.pid'
     
     def _gen_logger(self, log_file: str, log_level: str) -> logging.Logger:
         levels = {
