@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=root
 Group=root
-ExecStart=/usr/bin/uscmdrelay --host=0.0.0.0 --port=7777 --log=/var/log/uscmdrelay/uscmdrelay.log
+ExecStart=/usr/bin/uscmdrelay --log=/var/log/uscmdrelay/uscmdrelay.log serve --host=0.0.0.0 --port=7777
 Restart=always
 RestartSec=5
 

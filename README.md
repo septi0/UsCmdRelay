@@ -76,14 +76,10 @@ echo '{"auth_key": "my_auth_key", "command": "command-name"}' | nc <server-ip> <
 ## Server command line arguments
 
 ```
-uscmdrelay [-h] [--host HOST] [--port PORT] [--log LOG_FILE] [--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
-              [--shell-exec] [--version]
-              {configtest} ...
+uscmdrelay [-h] [--log LOG_FILE] [--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--shell-exec] [--version] {configtest,serve} ...
 
 options:
   -h, --help            show this help message and exit
-  --host HOST           Host to listen on
-  --port PORT           Port to listen on
   --log LOG_FILE        Log file where to write logs
   --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Log level
@@ -91,8 +87,13 @@ options:
   --version             show program's version number and exit
 
 Commands:
-  {configtest}
+  {configtest,serve}
     configtest          Test configuration file
+    serve               Start uscmdrelay server
+        options:
+        -h, --help   show this help message and exit
+        --host HOST  Host to listen on
+        --port PORT  Port to listen on
 ```
 
 ## Client data format:

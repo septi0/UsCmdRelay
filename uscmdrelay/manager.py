@@ -1,9 +1,7 @@
 import os
-import sys
 import logging
 import signal
 import asyncio
-import json
 import shlex
 from configparser import ConfigParser
 from uscmdrelay.client_request import ClientRequest
@@ -16,7 +14,6 @@ __all__ = ['UsCmdRelayManager']
 class UsCmdRelayManager:
     def __init__(self, params: dict) -> None:
         self._pid_filepath: str = self._gen_pid_filepath()
-        self._running: bool = False
 
         self._shell_exec = params.get('shell_exec', False)
 
@@ -37,16 +34,12 @@ class UsCmdRelayManager:
             'total_errors': 0,
         }
 
-        signal.signal(signal.SIGTERM, self._sigterm_handler)
-        signal.signal(signal.SIGINT, self._sigterm_handler)
-        signal.signal(signal.SIGQUIT, self._sigterm_handler)
-
-    def run(self, options: dict):
+    def run(self, options: dict) -> None:
         pid = str(os.getpid())
 
         if os.path.isfile(self._pid_filepath):
             self._logger.error("Server is already running")
-            sys.exit(1)
+            return
 
         with open(self._pid_filepath, 'w') as f:
             f.write(pid)
@@ -56,24 +49,60 @@ class UsCmdRelayManager:
         host = options.get('host', '0.0.0.0')
         port = options.get('port', 7777)
 
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        loop.add_signal_handler(signal.SIGTERM, self._sigterm_handler)
+        loop.add_signal_handler(signal.SIGINT, self._sigterm_handler)
+        loop.add_signal_handler(signal.SIGQUIT, self._sigterm_handler)
+
         try:
-            asyncio.run(self._start_server(host=host, port=port))
+            loop.run_until_complete(self._start_server(host=host, port=port))
         except (GracefulExit) as e:
             self._logger.info("Received termination signal")
         except (Exception) as e:
             self._logger.exception(e, exc_info=True)
         finally:
-            self._logger.info("Shutting down server")
+            try:
+                self._logger.info("Shutting down server")
 
-            # print stats
-            self._logger.info(f"Total clients: {self._stats['total_clients']}")
-            self._logger.info(f"Total requests: {self._stats['total_requests']}")
-            self._logger.info(f"Total errors: {self._stats['total_errors']}")
+                # print stats
+                self._logger.info(f"Total clients: {self._stats['total_clients']}")
+                self._logger.info(f"Total requests: {self._stats['total_requests']}")
+                self._logger.info(f"Total errors: {self._stats['total_errors']}")
 
-            os.unlink(self._pid_filepath)
+                os.unlink(self._pid_filepath)
 
-    def _sigterm_handler(self, signum, frame) -> None:
+                self._cancel_tasks(loop)
+                loop.run_until_complete(loop.shutdown_asyncgens())
+            finally:
+                asyncio.set_event_loop(None)
+                loop.close()
+
+    def _sigterm_handler(self) -> None:
         raise GracefulExit
+    
+    def _cancel_tasks(self, loop: asyncio.AbstractEventLoop) -> None:
+        tasks = asyncio.all_tasks(loop=loop)
+
+        if not tasks:
+            return
+
+        for task in tasks:
+            task.cancel()
+
+        loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+
+        for task in tasks:
+            if task.cancelled():
+                continue
+
+            if task.exception() is not None:
+                loop.call_exception_handler({
+                    'message': 'Unhandled exception during task cancellation',
+                    'exception': task.exception(),
+                    'task': task,
+                })
 
     def _gen_pid_filepath(self) -> str:
         if os.getuid() == 0:
@@ -273,7 +302,7 @@ class UsCmdRelayManager:
         self._logger.info(f'Relaying command "{request.cluster}::{request.command}"')
 
         try:
-            out = exec_cmd(cmd_with_args, shell_exec=self._shell_exec)
+            out = await exec_cmd(cmd_with_args, shell_exec=self._shell_exec)
         except ProcessError as e:
             self._logger.error(f'Client error: Could not execute cmd. Reason: {e}')
             return ClientResponse(str(e), 'error', code=3001)

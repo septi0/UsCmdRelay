@@ -8,8 +8,6 @@ def main():
     # get args from command line
     parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_argument('--host', dest='host', help='Host to listen on', default='0.0.0.0')
-    parser.add_argument('--port', dest='port', help='Port to listen on', type=int, default=7777)
     parser.add_argument('--log', dest='log_file', help='Log file where to write logs')
     parser.add_argument('--log-level', dest='log_level', help='Log level', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
     parser.add_argument('--shell-exec', dest='shell_exec', help='Use shell to execute commands (not recommended)', action='store_true')
@@ -18,8 +16,17 @@ def main():
     subparsers = parser.add_subparsers(title="Commands", dest="command")
 
     configtest_parser = subparsers.add_parser('configtest', help='Test configuration file')
+
+    serve_parser = subparsers.add_parser('serve', help='Start uscmdrelay server')
+
+    serve_parser.add_argument('--host', dest='host', help='Host to listen on', default='0.0.0.0')
+    serve_parser.add_argument('--port', dest='port', help='Port to listen on', type=int, default=7777)
     
     args = parser.parse_args()
+
+    if args.command is None:
+      parser.print_help()
+      sys.exit()
 
     options = {
         'log_file': args.log_file,
@@ -35,10 +42,12 @@ def main():
 
     if args.command == 'configtest':
         print("Config OK")
-    else:
+    elif args.command == 'serve':
         options = {
             'host': args.host,
             'port': args.port,
         }
 
         uscmdrelay.run(options)
+
+    sys.exit(0)
