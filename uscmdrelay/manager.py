@@ -296,7 +296,7 @@ class UsCmdRelayManager:
         command = self._relays_config[request.cluster][request.command]
 
         # split command into list parts
-        cmd_with_args = command
+        cmd_with_args = command.copy()
         cmd_with_args += request.arguments
 
         self._logger.info(f'Relaying command "{request.cluster}::{request.command}"')
